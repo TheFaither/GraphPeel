@@ -1,0 +1,28 @@
+LAMMPS (15 May 2015)
+WARNING: OMP_NUM_THREADS environment is not set. (../comm.cpp:89)
+  using 1 OpenMP thread(s) per MPI task
+Reading data file ...
+  orthogonal box = (0.121949 0.0655019 -5) to (14.6351 596.334 619.78)
+  1 by 16 by 32 MPI processor grid
+  reading atoms ...
+  23496 atoms
+  reading velocities ...
+  23496 velocities
+19848 atoms in group free
+3288 atoms in group anglesx
+30 atoms in group forced
+19878 atoms in group moving
+3618 atoms in group static
+WARNING: Temperature for fix modify is not for group all (../fix_nh.cpp:1349)
+WARNING: One or more atoms are time integrated more than once (../modify.cpp:264)
+Neighbor list info ...
+  2 neighbor list requests
+  update every 1 steps, delay 10 steps, check yes
+  master list distance cutoff = 12.2
+Setting up run ...
+Memory usage per processor = 8.33653 Mbytes
+Step Temp E_pair E_mol TotEng Press 
+       0    342.74861   -174519.07            0   -173478.15    72.408704 
+2018-05-08 16:41:17.207 (WARN ) [0x400010c91b0] :ibm.runjob.LogSignalInfo: received signal 24
+2018-05-08 16:41:17.208 (WARN ) [0x400010c91b0] :ibm.runjob.LogSignalInfo: signal sent from USER
+2018-05-08 16:41:17.209 (WARN ) [0x400010c91b0] :ibm.runjob.LogSignalInfo: sent from uid 0 (root)

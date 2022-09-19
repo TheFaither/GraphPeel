@@ -1,0 +1,149 @@
+LAMMPS (29 Oct 2020)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:94)
+  using 1 OpenMP thread(s) per MPI task
+# Input file for peeling of a single layer of graphite (1 layer of Graphene)
+# Martina, 21 march 2017
+
+# ------------------------ INITIALIZATION ----------------------------
+units 		metal
+dimension	3
+boundary	p	p	f
+atom_style	atomic
+
+
+# ----------------------- ATOM DEFINITION ----------------------------
+read_data 	relaxed_zz.data
+Reading data file ...
+  orthogonal box = (0.027360334 -4.5276439 -5.0000000) to (4.8916637 42.867644 216.80000)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  1360 atoms
+  reading velocities ...
+  1360 velocities
+  read_data CPU = 0.009 seconds
+
+# ------------------------ FORCE FIELDS ------------------------------
+pair_style	airebo 3.0 1 1
+pair_coeff	* * CH.airebo C C C C C C
+Reading airebo potential file CH.airebo with DATE: 2011-10-25
+
+#---------------------------- Neighbour ------------------------------
+neighbor 0.5 bin
+neigh_modify delay 10 every 1
+
+# ------------------------- SETTINGS ---------------------------------
+
+timestep 0.00005
+
+group	free	type 2 3
+1000 atoms in group free
+group anglesx type 4
+8 atoms in group anglesx
+group	forced	type 5
+0 atoms in group forced
+group	moving	union free forced
+1000 atoms in group moving
+group	static	type 1
+352 atoms in group static
+variable		time equal step*dt
+
+# geometry
+compute a_cn all coord/atom cutoff 1.939756
+compute	cn all reduce ave c_a_cn
+variable	radius equal 1.7
+variable	lx_ equal abs(bound(all,xmin))+abs(bound(all,xmax))+2.*${radius}
+variable	lx_ equal abs(bound(all,xmin))+abs(bound(all,xmax))+2.*1.7
+variable	ly_ equal abs(bound(all,ymin))+abs(bound(all,ymax))+2.*${radius}
+variable	ly_ equal abs(bound(all,ymin))+abs(bound(all,ymax))+2.*1.7
+variable	lz_ equal abs(bound(all,zmin))+abs(bound(all,zmax))+2.*${radius}
+variable	lz_ equal abs(bound(all,zmin))+abs(bound(all,zmax))+2.*1.7
+variable	volume equal ${lx_}*${ly_}*${lz_}
+variable	volume equal 8.31902399999999*${ly_}*${lz_}
+variable	volume equal 8.31902399999999*41.7150116667258*${lz_}
+variable	volume equal 8.31902399999999*41.7150116667258*64.6067886987949
+variable	lx_ delete
+variable	ly_ delete
+variable	lz_ delete
+variable	radius delete
+compute		a_u all displace/atom
+compute		ucz all reduce ave c_a_u[3]
+
+# energy
+compute		a_pe moving pe/atom
+variable	a_pe atom c_a_pe
+compute		pe moving reduce ave c_a_pe
+compute		a_ke moving ke/atom
+variable	a_ke atom c_a_ke
+compute		ke moving reduce ave c_a_ke
+compute		temp moving temp
+
+# work
+compute		p all pressure temp
+compute		a_v all stress/atom NULL
+compute		v moving reduce sum c_a_v[1] c_a_v[2] c_a_v[3] c_a_v[4] c_a_v[5] c_a_v[6]
+variable	s11 equal c_v[1]/${volume}
+variable	s11 equal c_v[1]/22420.376505548
+variable	s22 equal c_v[2]/${volume}
+variable	s22 equal c_v[2]/22420.376505548
+variable	s33 equal c_v[3]/${volume}
+variable	s33 equal c_v[3]/22420.376505548
+variable	s12 equal c_v[4]/${volume}
+variable	s12 equal c_v[4]/22420.376505548
+variable	s23 equal c_v[6]/${volume}
+variable	s23 equal c_v[6]/22420.376505548
+variable	s31 equal c_v[5]/${volume}
+variable	s31 equal c_v[5]/22420.376505548
+variable	a_fdx atom fx*c_a_u[1]
+variable	a_fdy atom fy*c_a_u[2]
+variable	a_fdz atom fz*c_a_u[3]
+compute		fdx moving reduce ave v_a_fdx
+compute		fdy moving reduce ave v_a_fdy
+compute		fdz moving reduce ave v_a_fdz
+
+######################################
+# EQUILIBRATION
+
+
+######################################
+# DEFORMATION
+
+reset_timestep	0
+
+fix zero static setforce 0.0 0.0 0.0
+
+# Use OVITO trajectories
+dump	dump all custom 10 production.lammpstrj id type x y z c_a_u[1] c_a_u[2] c_a_u[3] vx vy vz fx fy fz v_a_pe v_a_ke c_a_cn 	c_a_v[1] c_a_v[2] c_a_v[3] c_a_v[4] c_a_v[6] c_a_v[5]
+dump_modify	dump sort id
+
+fix	properties moving ave/time 1 10 10 	v_time c_pe c_ke c_temp v_s11 v_s22 v_s33 v_s12 v_s23 v_s31 c_p[1] c_p[2] c_p[3] c_p[4] c_p[6] c_p[5] c_fdx c_fdy c_fdz c_cn  c_ucz 	file properties.txt title1 "# deformation event every 4000 timesteps" 	title2 "#! 1.step 2.t, ns 3.U, eV 4.K, eV 5.T, K 6.s11, bar 7.s22, bar 8.s33, bar 9.s12, bar 10.s23, bar 11.s31, bar 12.Pxx, bar 13.Pyy, bar 14.Pzz, bar 15.Pxy, bar 16.Pyz, bar 17.Pzx, bar #18.fdx, eV 19.fdy, eV 20.fdz, eV 21.nn 23.ucz, A"
+
+dump	info_f forced  custom 500 trajetory_forced.txt id type x y z fx fy fz
+dump 	info_i anglesx custom 500 trajectory_inclinato.txt id type x y z fx fy fz
+fix	vel forced move linear 0.0 0.0 1.0 units box
+fix	nvt all  nvt temp 300. 300. 0.1
+fix 	zerovel forced setforce 0.0 0.0 NULL
+fix_modify  nvt temp temp
+WARNING: Temperature for fix modify is not for group all (src/fix_nh.cpp:1428)
+run	    3000 #pre yes post no every 400000 NULL
+Neighbor list info ...
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 10.7
+  ghost atom cutoff = 10.7
+  binsize = 5.35, bins = 1 9 42
+  2 neighbor lists, perpetual/occasional/extra = 1 1 0
+  (1) pair airebo, perpetual
+      attributes: full, newton on, ghost
+      pair build: full/bin/ghost
+      stencil: full/ghost/bin/3d
+      bin: standard
+  (2) compute coord/atom, occasional, copy from (1)
+      attributes: full, newton on
+      pair build: copy
+      stencil: none
+      bin: none
+Per MPI rank memory allocation (min/avg/max) = 15.75 | 15.75 | 15.75 Mbytes
+Step Temp E_pair E_mol TotEng Press 
+       0    381.85773   -9920.5537            0   -9853.4749    1526.5879 
+ERROR: Lost atoms: original 1360 current 1359 (src/thermo.cpp:427)
+Last command: run	    3000 #pre yes post no every 400000 NULL

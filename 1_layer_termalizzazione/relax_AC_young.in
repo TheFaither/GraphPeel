@@ -1,0 +1,76 @@
+# Input file for uniaxial tensile loading of single layer graphene ARMCHAIR
+# Martina, 1 giugno 2018
+
+# ------------------------ INITIALIZATION ----------------------------
+units 		metal
+dimension	3
+boundary	p	p	p
+atom_style	atomic
+
+
+# ----------------------- ATOM DEFINITION ----------------------------
+read_data 	structure
+
+# ------------------------ FORCE FIELDS ------------------------------
+pair_style	airebo 3.0 1 1 
+pair_coeff	* * CH.airebo C
+
+# ------------------------- SETTINGS ---------------------------------
+compute peratom all pe/atom 
+timestep 0.001
+
+variable		time equal step*dt
+compute		a_pe all pe/atom
+variable	a_pe atom c_a_pe
+compute		pe all reduce ave c_a_pe
+compute		a_ke all ke/atom
+variable	a_ke atom c_a_ke
+compute		ke all reduce ave c_a_ke
+compute		temp all temp
+######################################
+# EQUILIBRATION
+
+##---------------------------------------------------------------------------------------
+# minimizzazione
+fix              32 all box/relax x 0.0 
+fix              31 all box/relax y 0.0 
+min_style cg
+minimize 1.0e-15 1.0e-5 20000 20000
+unfix 32
+unfix 31 
+
+# Set thermo output
+thermo 1000
+thermo_style custom step lx ly lz press pxx pyy pzz pe temp
+
+
+# Use OVITO trajectories
+dump 1 all custom 1000 Pre_production.lammpstrj id type x y z c_peratom fx fy fz
+dump_modify 1 sort id
+
+fix	properties all ave/time 1 200 200 &
+	v_time c_pe c_ke c_temp &
+	file properties_relax.txt title1 "#! 1.step 2.t, ns 3.U, eV 4.K, eV 5.T, K "
+	
+##---------------------------------------------------------------------------------------
+# Equilibration Stage  (NPT dynamics from 10K —> 300 K)
+
+velocity 	all create 10.0 1231
+fix		1 all npt temp 10 300 0.1 x 0 0 10 y 0 0 10 drag 2
+run		50000
+unfix 1
+fix		2 all nvt temp 300 300 0.1 
+run		100000
+unfix 2
+
+undump 1
+
+# Store final cell length for strain calculations
+variable tmp equal "ly"
+variable L0 equal ${tmp}
+print "Initial Length, L0: ${L0}"
+
+write_data       relaxed_arm_young.data
+######################################
+# SIMULATION DONE
+print "All done"

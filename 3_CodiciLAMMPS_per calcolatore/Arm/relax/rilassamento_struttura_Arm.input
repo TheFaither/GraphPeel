@@ -1,0 +1,125 @@
+# Input file for peeling of a single layer of graphite (1 layer of Graphene)
+# Martina, 21 march 2017
+
+# ------------------------ INITIALIZATION ----------------------------
+units 		metal
+dimension	3
+boundary	p	p	p
+atom_style	atomic
+
+
+# ----------------------- ATOM DEFINITION ----------------------------
+read_data 	structure_t3
+
+# ------------------------ FORCE FIELDS ------------------------------
+pair_style	airebo 3.0 1 1 
+pair_coeff	* * CH.airebo C C C C C C
+
+# ------------------------- SETTINGS ---------------------------------
+
+timestep 0.001
+
+group	free	type 2 3 4 5 
+group anglesx type 4 #boundary del layer che viene delaminato
+group	forced	type 5
+group	moving	union free forced 
+group	static	type 1
+variable		time equal step*dt
+
+# geometry
+compute	a_cn all coord/atom cutoff 1.939756
+compute	cn all reduce ave c_a_cn
+variable	radius equal 1.7
+variable	lx_ equal abs(bound(all,xmin))+abs(bound(all,xmax))+2.*${radius} 
+variable	ly_ equal abs(bound(all,ymin))+abs(bound(all,ymax))+2.*${radius}
+variable	lz_ equal abs(bound(all,zmin))+abs(bound(all,zmax))+2.*${radius}
+variable	volume equal ${lx_}*${ly_}*${lz_}
+
+variable	lx_ delete
+variable	ly_ delete
+variable	lz_ delete
+variable	radius delete
+compute	a_u all displace/atom
+compute	ucz all reduce ave c_a_u[3]
+
+# energy
+compute	a_pe moving pe/atom
+variable	a_pe atom c_a_pe
+compute	pe moving reduce ave c_a_pe
+compute	a_ke moving ke/atom
+variable	a_ke atom c_a_ke
+compute	ke moving reduce ave c_a_ke
+compute	temp moving temp
+
+# work
+
+compute	p all pressure temp
+compute	a_v all stress/atom NULL
+compute	v moving reduce sum c_a_v[1] c_a_v[2] c_a_v[3] c_a_v[4] c_a_v[5] c_a_v[6]
+variable	s11 equal c_v[1]/${volume}
+variable	s22 equal c_v[2]/${volume}
+variable	s33 equal c_v[3]/${volume}
+variable	s12 equal c_v[4]/${volume}
+variable	s23 equal c_v[6]/${volume}
+variable	s31 equal c_v[5]/${volume}
+variable	a_fdx atom fx*c_a_u[1]
+variable	a_fdy atom fy*c_a_u[2]
+variable	a_fdz atom fz*c_a_u[3]
+compute	fdx moving reduce ave v_a_fdx
+compute	fdy moving reduce ave v_a_fdy
+compute	fdz moving reduce ave v_a_fdz
+
+######################################
+# EQUILIBRATION
+
+##---------------------------------------------------------------------------------------
+# minimizzazione
+fix              32 all box/relax x 0.0 
+fix              31 all box/relax y 0.0 
+min_style cg
+minimize 1.0e-15 1.0e-5 2000 2000
+unfix 32
+unfix 31 
+
+fix		zero static setforce 0.0 0.0 0.0
+
+# Set thermo output
+
+thermo_style	custom step v_time pe ke temp pxx pyy pzz pxy pyz pxz v_s11 v_s22 v_s33 v_s12 v_s23 v_s31 c_fdx c_fdy c_fdz c_cn
+thermo_modify	norm yes
+thermo		1000
+
+# Use OVITO trajectories
+
+dump		1 all custom 100 pre_production.lammpstrj id type x y z c_a_u[1] c_a_u[2] c_a_u[3] vx vy vz fx fy fz v_a_pe v_a_ke c_a_cn &
+	c_a_v[1] c_a_v[2] c_a_v[3] c_a_v[4] c_a_v[6] c_a_v[5]
+dump_modify 1 sort id
+fix		preproperties moving ave/time 1 200 200 &
+	v_time c_pe c_ke c_temp v_s11 v_s22 v_s33 v_s12 v_s23 v_s31 c_p[1] c_p[2] c_p[3] c_p[4] c_p[6] c_p[5] c_fdx c_fdy c_fdz c_cn  c_ucz &
+file preproperties.txt  title1 "#! 1.step 2.t, ps 3.U, eV 4.K, eV 5.T, K 6.s11, bar 7.s22, bar 8.s33, bar 9.s12, bar 10.s23, bar 11.s31, bar 12.Pxx, bar 13.Pyy, bar 14.Pzz, bar 15.Pxy, bar 16.Pyz, bar 17.Pzx, bar #18.fdx, eV 19.fdy, eV 20.fdz, eV 21.nn 23.ucz, A"
+
+
+##---------------------------------------------------------------------------------------
+# Equilibration Stage  (NVE dynamics from 600K —> 300 K)
+
+velocity 	all create 300.0 1231
+fix		langevin moving langevin 300. 300. 2.5 100000
+fix		nve moving nve
+run		3000
+
+unfix langevin 
+unfix nve
+
+# Equilibration stage  (NVT dynamics from 600K —> 300 K)
+fix			npt moving npt temp 300. 300. 1. y 0.0 0.0 10.0
+fix_modify		npt temp temp
+run		3000
+unfix	npt
+undump 	1
+unfix   preproperties
+
+
+write_data       relaxed_arm.data
+######################################
+# SIMULATION DONE
+print "All done"

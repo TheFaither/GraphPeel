@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# @job_name = peeling
+# @comment = "relaxation"
+# @output = peeling.out
+# @error = peeling.err
+# @environment = COPY_ALL
+# @job_type = bluegene
+# @notification = never
+# @bg_size = 264
+# @bg_connectivity = Torus
+# @wall_clock_limit = 00:30:00
+# @queue
+module load lammps/15May15
+runjob --ranks-per-node 16 --exe /bgsys/local/lammps/15May15/bin/lmp_juqueen < peeling_onelayer_relaxed.input 
+
+

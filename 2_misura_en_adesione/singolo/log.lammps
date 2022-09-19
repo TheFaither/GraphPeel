@@ -1,0 +1,166 @@
+LAMMPS (17 Nov 2016)
+# Input file for peeling of a single layer of graphite (1 layer of Graphene)
+# Martina, 21 march 2017
+
+# ------------------------ INITIALIZATION ----------------------------
+units 		metal
+dimension	3
+boundary	p	p	p
+atom_style	atomic
+
+
+# ----------------------- ATOM DEFINITION ----------------------------
+read_data 	structure_en_ad
+  orthogonal box = (0 0 -25) to (49.1902 51.12 48.38)
+  1 by 2 by 2 MPI processor grid
+  reading atoms ...
+  960 atoms
+
+# ------------------------ FORCE FIELDS ------------------------------
+pair_style	airebo 3.0 1 1
+pair_coeff	* * CH.airebo  C
+
+# ------------------------- SETTINGS ---------------------------------
+
+timestep 0.001
+
+variable		time equal step*dt
+compute		temp all temp
+compute 	pe all pe
+compute		ke all ke
+
+# energy
+
+
+
+
+######################################
+# EQUILIBRATION
+
+
+# Set thermo output
+#thermo_style	custom step v_time c_PE c_KE c_TEMP
+#thermo_modify	norm yes
+thermo		1000
+
+# Use OVITO trajectories
+dump		1 all custom 1000 pre_production.lammpstrj id type x y z
+dump_modify 1 sort id
+
+fix	preproperties all ave/time 1 200 200 	v_time c_pe c_ke c_temp 	file preproperties.txt  title1 "#! 1.step 2.t, ps 3.U, eV 4.K, eV 5.T K"
+
+##---------------------------------------------------------------------------------------
+# minimizzazione
+fix              32 all box/relax x 0.0
+fix              31 all box/relax y 0.0
+min_style cg
+minimize 1.0e-15 1.0e-5 2000 2000
+WARNING: Resetting reneighboring criteria during minimization (../min.cpp:168)
+Neighbor list info ...
+  1 neighbor list requests
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 12.2
+  ghost atom cutoff = 12.2
+  binsize = 6.1 -> bins = 9 9 13
+Memory usage per processor = 5.866 Mbytes
+Step Temp E_pair E_mol TotEng Press Volume 
+       0            0   -7112.1068            0   -7112.1068   -5928.8809    184521.73 
+     168            0   -7129.4212            0   -7129.4212 0.0014202018     178540.3 
+Loop time of 1.42284 on 4 procs for 168 steps with 960 atoms
+
+73.7% CPU use with 4 MPI tasks x no OpenMP threads
+
+Minimization stats:
+  Stopping criterion = linesearch alpha is zero
+  Energy initial, next-to-last, final = 
+        -7112.10676132     -7129.42121847     -7129.42121847
+  Force two-norm initial, final = 1448.49 0.00037778
+  Force max component initial, final = 1024.24 0.000297187
+  Final line search alpha, max atom move = 0.0625 1.85742e-05
+  Iterations, force evaluations = 168 180
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.040335   | 0.69486    | 1.3635     |  78.5 | 48.84
+Neigh   | 0.004909   | 0.0050765  | 0.005286   |   0.2 |  0.36
+Comm    | 0.019048   | 0.67789    | 1.3357     |  78.3 | 47.64
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.04501    |            |       |  3.16
+
+Nlocal:    240 ave 480 max 0 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+Nghost:    1193 ave 1433 max 953 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+Neighs:    0 ave 0 max 0 min
+Histogram: 4 0 0 0 0 0 0 0 0 0
+FullNghs:  43200 ave 86400 max 0 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+
+Total # of neighbors = 172800
+Ave neighs/atom = 180
+Neighbor list builds = 1
+Dangerous builds = 0
+unfix 32
+unfix 31
+
+write_data       minimized_structure.data
+Neighbor list info ...
+  1 neighbor list requests
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 12.2
+  ghost atom cutoff = 12.2
+  binsize = 6.1 -> bins = 8 9 13
+
+
+##---------------------------------------------------------------------------------------
+# Equilibration stage  (NVT dynamics from 600K —> 300 K)
+velocity 	all create 300.0 1231
+fix			nvt all nvt temp 300. 300. 1.
+fix_modify		nvt temp temp
+run		10000
+Memory usage per processor = 4.741 Mbytes
+Step Temp E_pair E_mol TotEng Press 
+     168          300   -7129.4212            0   -7092.2331    222.47956 
+    1000    157.84608   -7108.6938            0   -7089.1271   -351.85871 
+    2000    184.70883   -7106.3015            0   -7083.4049   -332.52284 
+    3000    211.71072   -7102.7343            0   -7076.4905     -176.545 
+    4000      240.657   -7098.8176            0   -7068.9856   -438.13251 
+    5000    270.03788   -7095.1044            0   -7061.6304   -212.75359 
+    6000    303.97916    -7093.185            0   -7055.5036   -346.25403 
+    7000    323.16131   -7092.0166            0   -7051.9574    -366.9449 
+    8000     313.8951   -7091.5507            0   -7052.6401   -389.59261 
+    9000    301.30539   -7093.6177            0   -7056.2677   -491.08957 
+   10000    291.38936   -7095.0321            0   -7058.9114   -293.09347 
+   10168    281.86714   -7094.0342            0   -7059.0938   -166.88363 
+Loop time of 84.1854 on 4 procs for 10000 steps with 960 atoms
+
+Performance: 10.263 ns/day, 2.338 hours/ns, 118.785 timesteps/s
+70.5% CPU use with 4 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.3351     | 41.648     | 81.571     | 609.2 | 49.47
+Neigh   | 0.11219    | 0.12806    | 0.14441    |   4.4 |  0.15
+Comm    | 1.7979     | 41.037     | 80.273     | 603.1 | 48.75
+Output  | 0.010396   | 0.010477   | 0.010666   |   0.1 |  0.01
+Modify  | 0.55378    | 1.2084     | 2.4612     |  70.7 |  1.44
+Other   |            | 0.1529     |            |       |  0.18
+
+Nlocal:    240 ave 487 max 0 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+Nghost:    1165.75 ave 1381 max 946 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+Neighs:    0 ave 0 max 0 min
+Histogram: 4 0 0 0 0 0 0 0 0 0
+FullNghs:  44065.5 ave 89576 max 0 min
+Histogram: 2 0 0 0 0 0 0 0 0 2
+
+Total # of neighbors = 176262
+Ave neighs/atom = 183.606
+Neighbor list builds = 26
+Dangerous builds = 0

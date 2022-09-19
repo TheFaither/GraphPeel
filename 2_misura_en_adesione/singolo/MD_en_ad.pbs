@@ -1,0 +1,39 @@
+#
+# to login on a node use -l h=korehpcxxx where xxx is the node number
+#
+#$ -q bld.q
+# -q bld.q    -> normal gigabit communication
+# -q bld-ib.q -> infiniband
+#
+#$ -pe mpi 4
+#  -pe mpi xxx -> use xxx processors (in general will be on different nodes)
+#  -pe smp  yyy -> use yyy processors on the same node (using shared-memory communication)
+#
+#$ -l mf=4G
+#  COMPULSORY parameter, indicating the MAXIMUM AMOUNT OF RAM PER NODE
+#  jobs exceeding this value will be KILLED with no mercy
+#
+#$ -cwd
+#$ -S /bin/sh
+
+module load mpi/openmpi-x86_64
+
+if [ $QUEUE = "bld-ib.iq" ]; then 
+    mpiflags='--mca btl self,sm,openib'
+else
+    mpiflags='--mca btl self,sm,tcp'
+fi
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~garberoglio/lib64:~garberoglio/lib
+export PATH=$PATH::~garberoglio/bin:~mazzolini/bin
+
+echo -n "Running  on: " ; uname -n
+cat $PE_HOSTFILE
+echo -n "Job started on: " ; date
+
+# run the MPI job
+
+mpirun $mpiflags lammps -in minimizzazione_struttura.input
+
+echo -n "Job ended on: " ; date
+
