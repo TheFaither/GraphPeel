@@ -2,7 +2,7 @@
 
 ## Current state of the manuscript
 - Link to the manuscript: https://drive.google.com/open?id=1FpiwAzqpqrZJVURL-U86zUIr2W5Hc0Cx&authuser=daniele.liprandi%40unitn.it&usp=drive_fs
-- In Chapter 2, the adhesive energy between two graphene layers by applying common peeling equations to different scenarios, which differ for the separation length between the graphene layers. 
+- In Chapter 2, the adhesive energy between two graphene layers is obtained by applying common peeling equations to different scenarios, which differ for the separation length between the graphene layers. 
 - In chapter 3, a vertical displacement is applied to the edge of a graphite layer adherent to a graphene substrate.
     - Here, the first major hiccup of the manuscript is found. Currently, the depth of the substrate is insufficient. This is visible from Figure 10, Figure 11, and page 11. The depth of the substrate, and generally speaking the dimensions of the sample, need to be increased
 
